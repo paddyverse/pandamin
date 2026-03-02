@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+export const dynamic = 'force-dynamic';
+
 async function verifyPin(formData: FormData) {
     'use server';
     const pin = formData.get('pin')?.toString();
