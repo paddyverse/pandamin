@@ -1,0 +1,25 @@
+spec:
+  name: ghl-agency-dashboard
+  region: nyc
+  services:
+    - name: web
+      environment_slug: node-js
+      instance_size_slug: basic-s
+      instance_count: 1
+      http_port: 3000
+      build_command: npm run build
+      run_command: npm run start
+      source_dir: /
+      deploy_on_push: true
+      envs:
+        - key: GHL_PRIVATE_TOKEN
+          scope: RUN_TIME
+          type: SECRET
+        - key: GHL_COMPANY_ID
+          scope: RUN_TIME
+          type: SECRET
+        - key: NEXT_PUBLIC_APP_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+      health_check:
+        http_path: /

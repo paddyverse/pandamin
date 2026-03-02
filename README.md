@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PandaDash — GHL Agency Command Center
 
-## Getting Started
+A Next.js 14 dashboard for GoHighLevel (GHL) agency owners to manage subaccounts, SaaS plans, and rebilling — embedded directly inside GHL via Custom Menu Link (iframe).
 
-First, run the development server:
+## Features
+
+- **Subaccount Management** — Create, update, delete, and bulk-manage GHL locations
+- **SaaS Plans** — View plan distribution, assign plans to accounts, bulk-enable SaaS
+- **Rebilling** — Monitor and toggle rebilling status per account
+- **Command Palette** — Cmd+K global search across accounts and plans
+- **Real-time Updates** — TanStack Query with optimistic updates + Sonner toast notifications
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Variable | Required | Description |
+|---|---|---|
+| `GHL_PRIVATE_TOKEN` | ✅ | GHL Private Integration Token (server-only, never exposed to browser) |
+| `GHL_COMPANY_ID` | ✅ | Your GHL Agency Company ID |
+| `NEXT_PUBLIC_APP_URL` | Optional | Public URL of deployed app |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> **Security**: `GHL_PRIVATE_TOKEN` is never sent to the client. All GHL API calls are proxied through Next.js server-side API routes.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Local Development
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# 1. Install dependencies
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 2. Set up environment
+cp .env.example .env.local
+# Edit .env.local with your GHL_PRIVATE_TOKEN and GHL_COMPANY_ID
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 3. Start dev server
+npm run dev
 
-## Deploy on Vercel
+# Open: http://localhost:3000/dashboard
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Simulating GHL iframe params locally
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+http://localhost:3000/dashboard?location_id=abc123&user_fname=John&user_lname=Doe
+```
+
+---
+
+## Production Deployment (DigitalOcean App Platform)
+
+### Via DigitalOcean dashboard
+
+1. Create a new App from your GitHub repo
+2. Select **Node.js** environment
+3. Set build command: `npm run build` | run command: `npm run start`
+4. Add **Secret** env vars: `GHL_PRIVATE_TOKEN`, `GHL_COMPANY_ID`
+5. Add **Plain Text** env var: `NEXT_PUBLIC_APP_URL` = your app URL
+6. Deploy
+
+### Via `doctl` CLI
+
+```bash
+doctl apps create --spec .do/app.yaml
+# then set secrets via the DigitalOcean dashboard
+```
+
+---
+
+## GHL Custom Menu Link Setup
+
+1. In GHL → **Agency Settings → Custom Menu Links** → **Add Menu Link**
+
+| Field | Value |
+|---|---|
+| **Title** | PandaDash Command Center |
+| **URL** | `https://your-deployed-url.com/dashboard?location_id={{location.id}}&user_fname={{user.first_name}}&user_lname={{user.last_name}}` |
+| **Open Mode** | Embedded Page (iFrame) |
+| **Visibility** | Admin only |
+
+2. Save — PandaDash appears in the GHL sidebar, pre-populated with the active location and user name.
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/              # Server-side GHL API proxies (token stays here)
+│   └── dashboard/        # Pages: overview, accounts, saas, rebilling
+├── components/
+│   ├── shared/           # CommandPalette, LoadingState, EmptyState
+│   ├── accounts/         # AccountsTable, CreateAccountDialog, etc.
+│   └── saas/             # PlanCards, PlanAssignmentTable, RebillingStatusTable
+├── hooks/                # TanStack Query hooks
+└── lib/
+    ├── ghl-client.ts     # GHL API client (server-only singleton)
+    ├── ghl-types.ts      # TypeScript types
+    ├── validators.ts     # Zod schemas
+    └── rate-limiter.ts   # Token bucket (100 req/10s)
+```
+
+## Tech Stack
+
+Next.js 14 · TypeScript · TanStack Query · shadcn/ui · Tailwind CSS · Sonner · TanStack Table · cmdk · Zod · Recharts
