@@ -1,0 +1,91 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+const ALLOWED_LOCATION_ID = 'Iy0nARyuqM5cNIT6oiVR';
+
+export function middleware(request: NextRequest) {
+    const { pathname, searchParams } = request.nextUrl;
+
+    // 1. Skip middleware for static assets, public files, and Next.js internals
+    if (
+        pathname.startsWith('/_next') ||
+        pathname.startsWith('/public') ||
+        pathname === '/favicon.ico'
+    ) {
+        return NextResponse.next();
+    }
+
+    // 2. Allow unrestricted access to the login page itself
+    if (pathname.startsWith('/login')) {
+        return NextResponse.next();
+    }
+
+    // ─── Authentication Check ───
+    const authSession = request.cookies.get('auth_session')?.value;
+
+    // If accessing dashboard/API without a valid session, redirect to login
+    if (authSession !== 'authenticated') {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = '/login';
+        return NextResponse.redirect(loginUrl);
+    }
+
+    // ─── Agency Location Enforcement ───
+    const urlLocationId = searchParams.get('location_id');
+    const cookieLocationId = request.cookies.get('ghl_location_id')?.value;
+    const locationId = urlLocationId || cookieLocationId;
+
+    if (locationId !== ALLOWED_LOCATION_ID) {
+        return new NextResponse(
+            JSON.stringify({
+                error: 'Unauthorized access',
+                message: 'This application can only be accessed from its authorized HighLevel location.'
+            }),
+            {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+    }
+
+    // ─── Proceed with Request & Apply Security Headers ───
+    const response = NextResponse.next();
+
+    // Persist the location_id via cookie for subsequent client-side navigations
+    if (urlLocationId && cookieLocationId !== urlLocationId) {
+        response.cookies.set('ghl_location_id', urlLocationId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'none', // Required for iframes embedded in GHL
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+        });
+    }
+
+    // Pass the location id as a header so Server Components/API routes can access it easily if needed
+    response.headers.set('x-ghl-location-id', locationId);
+
+    // ─── Content Security Policy (CSP) ───
+    // Prevent clickjacking: Only allow framing by GoHighLevel domains
+    response.headers.set(
+        'Content-Security-Policy',
+        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com;"
+    );
+    // Extra older header for broad iframe protection just in case
+    response.headers.set('X-Frame-Options', 'ALLOW-FROM https://app.gohighlevel.com/');
+
+    return response;
+}
+
+export const config = {
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         * - public files
+         */
+        '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    ],
+};

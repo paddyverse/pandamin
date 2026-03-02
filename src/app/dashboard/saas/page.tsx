@@ -36,11 +36,14 @@ export default function SaasPage() {
 
     const plans = plansQuery.data?.plans ?? [];
     const accounts = accountsQuery.data?.accounts ?? [];
+    const metadata = accountsQuery.data?.metadata;
 
-    const accountCounts = buildAccountCounts(accounts, plans.map((p) => p.id));
+    const accountCounts = metadata?.planCounts ?? buildAccountCounts(accounts, plans.map((p) => p.id));
+
+    // We still need the array for the dropdown in the UI Dialog
     const inactiveAccounts = accounts.filter((a) => !a.active);
 
-    const totalAssigned = Object.values(accountCounts).reduce((s, c) => s + c, 0);
+    const totalAssigned = metadata ? Object.values(metadata.planCounts).reduce((s, c) => s + c, 0) : 0;
     const totalAccounts = accounts.length;
 
     const isLoading = plansQuery.isLoading || accountsQuery.isLoading;

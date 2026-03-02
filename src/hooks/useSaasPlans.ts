@@ -9,6 +9,11 @@ import type {
 interface SaasAccountsResponse {
     accounts: GHLSaasSubAccount[];
     total: number;
+    metadata: {
+        activeAccounts: number;
+        inactiveAccounts: number;
+        planCounts: Record<string, number>;
+    };
 }
 
 export function useSaasPlans() {
