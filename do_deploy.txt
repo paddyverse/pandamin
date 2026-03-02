@@ -1,0 +1,12 @@
+2026-03-02T22:54:20.315422482Z 
+2026-03-02T22:54:20.315478060Z > pandamin@0.1.0 start
+2026-03-02T22:54:20.315482491Z > next start
+2026-03-02T22:54:20.315484909Z 
+2026-03-02T22:54:21.137053347Z ▲ Next.js 16.1.6
+2026-03-02T22:54:21.137393129Z - Local:         http://localhost:3000
+2026-03-02T22:54:21.137422012Z - Network:       http://10.244.16.46:3000
+2026-03-02T22:54:21.137576719Z 
+2026-03-02T22:54:21.137799388Z ✓ Starting...
+2026-03-02T22:54:21.431485417Z ✓ Ready in 668ms
+2026-03-02T22:54:20Z ERROR failed health checks after 2 attempts with error Readiness probe failed: Get "http://10.244.16.46:3000/": dial tcp 10.244.16.46:3000: connect: connection refused
+2026-03-02T22:55:51Z ERROR failed health checks after 11 attempts with error Readiness probe failed: HTTP probe failed with statuscode: 403
