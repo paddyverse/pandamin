@@ -15,9 +15,19 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
+    // ─── Attach Security Headers Early ───
+    const response = NextResponse.next();
+
+    // Prevent clickjacking: Only allow framing by GoHighLevel domains and whitelabels
+    response.headers.set(
+        'Content-Security-Policy',
+        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com https://*.leadconnectorhq.com https://app.leadconnectorhq.com https://*.msgsndr.com https://app.msgsndr.com https://*.highlevel.com https://*.myclients.io;"
+    );
+    // Note: We intentionally do not set X-Frame-Options because it conflicts with CSP frame-ancestors in some browsers
+
     // 2. Allow unrestricted access to the login page itself and health check endpoints
     if (pathname.startsWith('/login') || pathname === '/api/health') {
-        return NextResponse.next();
+        return response;
     }
 
     // 2.5 Allow health checks from DO or basic monitoring
@@ -25,7 +35,9 @@ export function middleware(request: NextRequest) {
     if (userAgent.includes('DigitalOcean') || userAgent === 'curl/8.7.1' || userAgent === '') {
         // Just return okay for these basic health checks to keep the deployment from failing
         if (pathname === '/') {
-            return new NextResponse('OK', { status: 200 });
+            const okResponse = new NextResponse('OK', { status: 200 });
+            okResponse.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') || '');
+            return okResponse;
         }
     }
 
@@ -35,7 +47,7 @@ export function middleware(request: NextRequest) {
     const locationId = urlLocationId || cookieLocationId;
 
     if (locationId !== ALLOWED_LOCATION_ID) {
-        return new NextResponse(
+        const errResponse = new NextResponse(
             JSON.stringify({
                 error: 'Unauthorized access',
                 message: 'This application can only be accessed from its authorized HighLevel location.'
@@ -45,6 +57,8 @@ export function middleware(request: NextRequest) {
                 headers: { 'Content-Type': 'application/json' }
             }
         );
+        errResponse.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') || '');
+        return errResponse;
     }
 
     // ─── Authentication Check ───
@@ -56,6 +70,7 @@ export function middleware(request: NextRequest) {
         loginUrl.pathname = '/login';
 
         const redirectResponse = NextResponse.redirect(loginUrl);
+        redirectResponse.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') || '');
 
         // CRITICAL: Save the location cookie on the redirect so it isn't lost
         if (urlLocationId && cookieLocationId !== urlLocationId) {
@@ -72,7 +87,7 @@ export function middleware(request: NextRequest) {
     }
 
     // ─── Proceed with Request & Apply Security Headers ───
-    const response = NextResponse.next();
+    // (response is already defined above)
 
     // Persist the location_id via cookie for subsequent client-side navigations
     if (urlLocationId && cookieLocationId !== urlLocationId) {
@@ -87,15 +102,6 @@ export function middleware(request: NextRequest) {
 
     // Pass the location id as a header so Server Components/API routes can access it easily if needed
     response.headers.set('x-ghl-location-id', locationId);
-
-    // ─── Content Security Policy (CSP) ───
-    // Prevent clickjacking: Only allow framing by GoHighLevel domains and whitelabels
-    response.headers.set(
-        'Content-Security-Policy',
-        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com https://*.leadconnectorhq.com https://app.leadconnectorhq.com https://*.msgsndr.com https://app.msgsndr.com https://*.highlevel.com https://*.myclients.io;"
-    );
-    // Extra older header for broad iframe protection just in case
-    response.headers.set('X-Frame-Options', 'ALLOWALL');
 
     return response;
 }
