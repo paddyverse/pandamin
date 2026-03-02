@@ -164,9 +164,8 @@ class GHLClient {
     // ─── SaaS Plans ────────────────────────────────────────────────────────────
 
     async getPlans(): Promise<GHLPlansResponse> {
-        const query = new URLSearchParams({ companyId: this.companyId });
         return this.request<GHLPlansResponse>(
-            `/saas-api/public-api/get-plans?${query.toString()}`
+            `/saas/agency-plans/${this.companyId}`
         );
     }
 
@@ -174,7 +173,7 @@ class GHLClient {
 
     async getLocationSubscription(locationId: string): Promise<GHLSubscription> {
         return this.request<GHLSubscription>(
-            `/saas-api/public-api/get-location-subscription/${locationId}`
+            `/saas/location-subscription/${locationId}`
         );
     }
 
@@ -183,7 +182,7 @@ class GHLClient {
         data: UpdateSubscriptionData
     ): Promise<GHLSubscription> {
         return this.request<GHLSubscription>(
-            `/saas-api/public-api/update-subscription/${locationId}`,
+            `/saas/update-subscription/${locationId}`,
             {
                 method: 'PUT',
                 body: JSON.stringify({ ...data, companyId: this.companyId }),
@@ -196,7 +195,7 @@ class GHLClient {
     async getSaasSubAccounts(): Promise<{ locations: GHLSaasSubAccount[] }> {
         const query = new URLSearchParams({ companyId: this.companyId });
         return this.request<{ locations: GHLSaasSubAccount[] }>(
-            `/saas-api/public-api/get-saas-sub-accounts?${query.toString()}`
+            `/saas/sub-accounts?${query.toString()}`
         );
     }
 
@@ -206,7 +205,7 @@ class GHLClient {
         locationIds: string[],
         planId: string
     ): Promise<{ success: boolean; results: BulkOperationResult[] }> {
-        return this.request(`/saas-api/public-api/bulk-enable-saas`, {
+        return this.request(`/saas/bulk-enable`, {
             method: 'POST',
             body: JSON.stringify({
                 locationIds,
@@ -222,7 +221,7 @@ class GHLClient {
         locationId: string,
         data: UpdateRebillingData
     ): Promise<{ success: boolean }> {
-        return this.request(`/saas-api/public-api/update-rebilling/${locationId}`, {
+        return this.request(`/saas/update-rebilling/${locationId}`, {
             method: 'PUT',
             body: JSON.stringify({ ...data, companyId: this.companyId }),
         });
