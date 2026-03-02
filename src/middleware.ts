@@ -89,13 +89,13 @@ export function middleware(request: NextRequest) {
     response.headers.set('x-ghl-location-id', locationId);
 
     // ─── Content Security Policy (CSP) ───
-    // Prevent clickjacking: Only allow framing by GoHighLevel domains
+    // Prevent clickjacking: Only allow framing by GoHighLevel domains and whitelabels
     response.headers.set(
         'Content-Security-Policy',
-        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com;"
+        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com https://*.leadconnectorhq.com https://app.leadconnectorhq.com https://*.msgsndr.com https://app.msgsndr.com https://*.highlevel.com https://*.myclients.io;"
     );
     // Extra older header for broad iframe protection just in case
-    response.headers.set('X-Frame-Options', 'ALLOW-FROM https://app.gohighlevel.com/');
+    response.headers.set('X-Frame-Options', 'ALLOWALL');
 
     return response;
 }
