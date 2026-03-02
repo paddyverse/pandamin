@@ -9,51 +9,70 @@ import {
     CreditCard,
     RefreshCw,
     Settings,
-    Command,
+    Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { useGHLContext } from '@/hooks/useGHLContext';
 import { type ReactNode } from 'react';
 
 const NAV_ITEMS = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
     { href: '/dashboard/accounts', icon: Users, label: 'Accounts' },
     { href: '/dashboard/saas', icon: CreditCard, label: 'SaaS Plans' },
     { href: '/dashboard/saas/rebilling', icon: RefreshCw, label: 'Rebilling' },
     { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
 ];
 
-const PAGE_TITLES: Record<string, string> = {
-    '/dashboard': 'Overview',
-    '/dashboard/accounts': 'Accounts',
-    '/dashboard/accounts/create': 'Create Account',
-    '/dashboard/saas': 'SaaS Plans',
-    '/dashboard/saas/rebilling': 'Rebilling',
-    '/dashboard/settings': 'Settings',
-};
+// ─── Top Nav (inner — needs useSearchParams via useGHLContext) ─────────────────
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
-
-function Sidebar() {
+function TopNavInner({ onOpenPalette }: { onOpenPalette: () => void }) {
     const pathname = usePathname();
+    const { userFirstName } = useGHLContext();
 
     return (
-        <aside className="flex flex-col w-64 shrink-0 bg-slate-900 text-white min-h-screen">
-            {/* Logo */}
-            <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-800">
-                <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-bold text-base select-none">
-                    🐼
+        <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm">
+            {/* Brand + actions row */}
+            <div className="flex items-center justify-between px-4 h-11 border-b border-slate-100">
+                {/* Logo */}
+                <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center text-white text-xs font-bold select-none">
+                        🐼
+                    </div>
+                    <span className="font-semibold text-sm text-slate-800 tracking-tight">
+                        PandaDash
+                    </span>
                 </div>
-                <span className="font-semibold text-[15px] tracking-tight text-white">
-                    PandaDash
-                </span>
+
+                {/* Right side */}
+                <div className="flex items-center gap-3">
+                    {userFirstName && (
+                        <span className="text-xs text-slate-500 hidden sm:block">
+                            Hello,{' '}
+                            <span className="font-medium text-slate-700">
+                                {userFirstName}
+                            </span>
+                        </span>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Open command palette"
+                        className="h-7 gap-1.5 text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700 text-xs font-normal bg-white"
+                        onClick={onOpenPalette}
+                    >
+                        <Search className="h-3 w-3" />
+                        Search
+                        <kbd className="ml-0.5 hidden sm:inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[10px] text-slate-400 font-mono">
+                            ⌘K
+                        </kbd>
+                    </Button>
+                </div>
             </div>
 
-            {/* Nav */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5">
+            {/* Nav tabs row */}
+            <nav className="flex items-center px-2 h-9 gap-0.5 overflow-x-auto">
                 {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
                     const isActive =
                         href === '/dashboard'
@@ -64,96 +83,33 @@ function Sidebar() {
                             key={href}
                             href={href}
                             className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative group',
+                                'flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors relative whitespace-nowrap',
                                 isActive
-                                    ? 'bg-slate-800 text-white'
-                                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                    ? 'text-indigo-600'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                             )}
                         >
-                            {/* Active left border accent */}
-                            {isActive && (
-                                <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-indigo-500 rounded-full" />
-                            )}
-                            <Icon
-                                className={cn(
-                                    'h-4 w-4 shrink-0',
-                                    isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'
-                                )}
-                            />
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
                             {label}
+                            {/* Underline active indicator */}
+                            {isActive && (
+                                <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-indigo-600 rounded-full" />
+                            )}
                         </Link>
                     );
                 })}
             </nav>
-
-            {/* Footer */}
-            <div className="px-5 pb-5 pt-3 border-t border-slate-800">
-                <p className="text-[10px] text-slate-600 font-medium tracking-wide uppercase">
-                    Powered by Padiverse LLC
-                </p>
-            </div>
-        </aside>
-    );
-}
-
-// ─── Top Bar ─────────────────────────────────────────────────────────────────
-
-interface TopBarProps {
-    onOpenPalette: () => void;
-}
-
-function TopBar({ onOpenPalette }: TopBarProps) {
-    const pathname = usePathname();
-    const { userFirstName } = useGHLContext();
-    const title = PAGE_TITLES[pathname] ?? 'Dashboard';
-
-    return (
-        <header className="h-14 shrink-0 border-b border-slate-200 bg-white flex items-center justify-between px-6">
-            <div>
-                <h1 className="text-[15px] font-semibold text-slate-800">{title}</h1>
-            </div>
-            <div className="flex items-center gap-3">
-                {/* Greeting from iframe URL params */}
-                {userFirstName && (
-                    <>
-                        <span className="text-sm text-slate-500 hidden sm:block">
-                            Hello, <span className="font-medium text-slate-700">{userFirstName}</span>
-                        </span>
-                        <Separator orientation="vertical" className="h-5" />
-                    </>
-                )}
-
-                {/* Cmd+K search trigger */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label="Open command palette"
-                    className="h-8 gap-2 text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700 text-xs font-normal"
-                    onClick={onOpenPalette}
-                >
-                    <Command className="h-3 w-3" />
-                    Search
-                    <kbd className="ml-1 hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 font-mono">
-                        ⌘K
-                    </kbd>
-                </Button>
-            </div>
         </header>
     );
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-interface DashboardLayoutProps {
-    children: ReactNode;
-}
-
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children }: { children: ReactNode }) {
     const [paletteOpen, setPaletteOpen] = useState(false);
-
     const openPalette = useCallback(() => setPaletteOpen(true), []);
 
-    // Global Cmd+K / Ctrl+K keyboard shortcut
+    // Global Cmd+K / Ctrl+K
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -166,24 +122,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, []);
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <Sidebar />
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-                <Suspense
-                    fallback={
-                        <header className="h-14 shrink-0 border-b border-slate-200 bg-white flex items-center px-6">
-                            <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
-                        </header>
-                    }
-                >
-                    <TopBar onOpenPalette={openPalette} />
-                </Suspense>
-                <main className="flex-1 overflow-y-auto">
-                    <div className="p-6">{children}</div>
-                </main>
-            </div>
+        <div className="flex flex-col min-h-screen bg-slate-50">
+            {/* Top Navigation */}
+            <Suspense
+                fallback={
+                    <header className="shrink-0 bg-white border-b border-slate-200 h-20" />
+                }
+            >
+                <TopNavInner onOpenPalette={openPalette} />
+            </Suspense>
 
-            {/* Global command palette — rendered once at layout level */}
+            {/* Page content */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto px-4 py-5">{children}</div>
+            </main>
+
             <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         </div>
     );
