@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
     // Prevent clickjacking: Only allow framing by GoHighLevel domains and whitelabels
     response.headers.set(
         'Content-Security-Policy',
-        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com https://*.leadconnectorhq.com https://app.leadconnectorhq.com https://*.msgsndr.com https://app.msgsndr.com https://*.highlevel.com https://*.myclients.io;"
+        "frame-ancestors 'self' https://*.gohighlevel.com https://app.gohighlevel.com https://*.leadconnectorhq.com https://app.leadconnectorhq.com https://*.msgsndr.com https://app.msgsndr.com https://*.highlevel.com https://*.myclients.io https://app.mycrmdash.com https://*.mycrmdash.com;"
     );
     // Note: We intentionally do not set X-Frame-Options because it conflicts with CSP frame-ancestors in some browsers
 
