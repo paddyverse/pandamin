@@ -43,8 +43,11 @@ export function middleware(request: NextRequest) {
 
     // ─── Agency Location Enforcement ───
     const urlLocationId = searchParams.get('location_id');
+    const headerLocationId = request.headers.get('x-ghl-location-id');
     const cookieLocationId = request.cookies.get('ghl_location_id')?.value;
-    const locationId = urlLocationId || cookieLocationId;
+
+    // Fallback: URL > Header > Cookie
+    const locationId = urlLocationId || headerLocationId || cookieLocationId;
 
     if (locationId !== ALLOWED_LOCATION_ID) {
         const errResponse = new NextResponse(

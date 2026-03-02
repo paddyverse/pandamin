@@ -3,12 +3,33 @@
  * Handles Content-Type, response.ok check, and error extraction.
  */
 export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    // If running in the browser, attach the location_id
+    if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        let locId = searchParams.get('location_id');
+
+        // Save to sessionStorage so it persists across Next.js client-side navigations
+        if (locId) {
+            sessionStorage.setItem('ghl_location_id', locId);
+        } else {
+            locId = sessionStorage.getItem('ghl_location_id');
+        }
+
+        if (locId) {
+            headers['x-ghl-location-id'] = locId;
+        }
+    }
+
     const res = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options?.headers ?? {}),
-        },
         ...options,
+        headers: {
+            ...headers,
+            ...(options?.headers as Record<string, string> ?? {}),
+        },
     });
 
     if (!res.ok) {
