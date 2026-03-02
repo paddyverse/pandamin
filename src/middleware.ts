@@ -20,16 +20,6 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // ─── Authentication Check ───
-    const authSession = request.cookies.get('auth_session')?.value;
-
-    // If accessing dashboard/API without a valid session, redirect to login
-    if (authSession !== 'authenticated') {
-        const loginUrl = request.nextUrl.clone();
-        loginUrl.pathname = '/login';
-        return NextResponse.redirect(loginUrl);
-    }
-
     // ─── Agency Location Enforcement ───
     const urlLocationId = searchParams.get('location_id');
     const cookieLocationId = request.cookies.get('ghl_location_id')?.value;
@@ -46,6 +36,30 @@ export function middleware(request: NextRequest) {
                 headers: { 'Content-Type': 'application/json' }
             }
         );
+    }
+
+    // ─── Authentication Check ───
+    const authSession = request.cookies.get('auth_session')?.value;
+
+    // If accessing dashboard/API without a valid session, redirect to login
+    if (authSession !== 'authenticated') {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = '/login';
+
+        const redirectResponse = NextResponse.redirect(loginUrl);
+
+        // CRITICAL: Save the location cookie on the redirect so it isn't lost
+        if (urlLocationId && cookieLocationId !== urlLocationId) {
+            redirectResponse.cookies.set('ghl_location_id', urlLocationId, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'none',
+                path: '/',
+                maxAge: 60 * 60 * 24 * 7, // 1 week
+            });
+        }
+
+        return redirectResponse;
     }
 
     // ─── Proceed with Request & Apply Security Headers ───
