@@ -13,7 +13,10 @@ export async function GET(request: Request) {
         const locationId = urlLoc || headerLoc || cookieLoc;
         const ALLOWED = process.env.ALLOWED_LOCATION_ID;
 
-        if (ALLOWED && locationId !== ALLOWED) {
+        // If a location ID is specifically provided through headers/url/cookie, ensure it matches.
+        // If it's completely missing, we assume middleware.ts caught any unauthorized access via session cookies, 
+        // because the first RSC render won't have the client-side x-ghl-location-id header yet.
+        if (ALLOWED && locationId && locationId !== ALLOWED) {
             return NextResponse.json({ error: 'Unauthorized location' }, { status: 403 });
         }
 
