@@ -7,20 +7,35 @@ import { ZodError } from 'zod';
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = request.nextUrl;
-        const skip = parseInt(searchParams.get('skip') ?? '0', 10);
-        const limit = parseInt(searchParams.get('limit') ?? '20', 10);
-        const order = searchParams.get('order') as 'asc' | 'desc' | null;
         const query = searchParams.get('search') ?? undefined;
 
         const client = getGHLClient();
-        const data = await client.searchLocations({
-            skip: isNaN(skip) ? 0 : skip,
-            limit: isNaN(limit) ? 20 : Math.min(limit, 100),
-            order: order ?? undefined,
-            query,
-        });
 
-        return NextResponse.json(data);
+        let allLocations: any[] = [];
+        const limit = 20;
+        let skip = 0;
+        const maxPages = 50; // max 1000 accounts logic 
+
+        for (let i = 0; i < maxPages; i++) {
+            const data = await client.searchLocations({
+                skip,
+                limit,
+                query,
+            });
+
+            const locations = data.locations ?? [];
+            if (locations.length === 0) break;
+
+            allLocations = allLocations.concat(locations);
+
+            if (locations.length < 20) break;
+            skip += limit;
+        }
+
+        return NextResponse.json({
+            locations: allLocations,
+            total: allLocations.length
+        });
     } catch (err) {
         console.error('[GET /api/locations]', err);
         if (err instanceof GHLError) {

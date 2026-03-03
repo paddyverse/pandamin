@@ -3,6 +3,7 @@
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { RebillingStatusTable } from '@/components/saas/RebillingStatusTable';
 import { useSaasAccounts } from '@/hooks/useSaasPlans';
 
@@ -72,19 +73,26 @@ export default function RebillingPage() {
 
             {/* ── Rebilling table ────────────────────────────────────────────── */}
             {accountsQuery.isError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-                    <p className="text-sm text-red-600">
-                        {accountsQuery.error?.message ?? 'Failed to load account data.'}
-                    </p>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        onClick={() => void accountsQuery.refetch()}
-                    >
-                        Try Again
-                    </Button>
-                </div>
+                (accountsQuery.error?.message?.includes('Forbidden') || accountsQuery.error?.message?.includes('Unauthorized')) ? (
+                    <EmptyState
+                        title="Missing Agency SaaS API Scopes"
+                        description="Your HighLevel API Token does not have permission to read SaaS data. Please generate a new OAuth token with 'saas.agency.readonly' and 'saas.agency.write' scopes and update your environment variables."
+                    />
+                ) : (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+                        <p className="text-sm text-red-600">
+                            {accountsQuery.error?.message ?? 'Failed to load account data.'}
+                        </p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 text-red-700 border-red-300 hover:bg-red-100"
+                            onClick={() => void accountsQuery.refetch()}
+                        >
+                            Try Again
+                        </Button>
+                    </div>
+                )
             ) : (
                 <RebillingStatusTable
                     accounts={accounts}

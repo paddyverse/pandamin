@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlanCards } from '@/components/saas/PlanCards';
 import { PlanAssignmentTable } from '@/components/saas/PlanAssignmentTable';
 import { BulkEnableSaasDialog } from '@/components/saas/BulkEnableSaasDialog';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useSaasPlans, useSaasAccounts } from '@/hooks/useSaasPlans';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -137,20 +138,27 @@ export default function SaasPage() {
                             <Skeleton key={i} className="h-11 w-full rounded-lg" />
                         ))}
                     </div>
-                ) : accountsQuery.isError ? (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-                        <p className="text-sm text-red-600">
-                            {accountsQuery.error?.message ?? 'Failed to load account assignments.'}
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => void accountsQuery.refetch()}
-                        >
-                            Try Again
-                        </Button>
-                    </div>
+                ) : accountsQuery.isError || plansQuery.isError ? (
+                    (accountsQuery.error?.message?.includes('Forbidden') || accountsQuery.error?.message?.includes('Unauthorized') || plansQuery.error?.message?.includes('Forbidden') || plansQuery.error?.message?.includes('Unauthorized')) ? (
+                        <EmptyState
+                            title="Missing Agency SaaS API Scopes"
+                            description="Your HighLevel API Token does not have permission to read SaaS data. Please generate a new OAuth token with 'saas.agency.readonly' and 'saas.agency.write' scopes and update your environment variables."
+                        />
+                    ) : (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+                            <p className="text-sm text-red-600">
+                                {accountsQuery.error?.message ?? plansQuery.error?.message ?? 'Failed to load account assignments.'}
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-3 text-red-700 border-red-300 hover:bg-red-100"
+                                onClick={() => void accountsQuery.refetch()}
+                            >
+                                Try Again
+                            </Button>
+                        </div>
+                    )
                 ) : (
                     <PlanAssignmentTable
                         accounts={accounts}

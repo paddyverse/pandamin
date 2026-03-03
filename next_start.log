@@ -4,3 +4,11 @@
 
 ✓ Starting...
 ✓ Ready in 95ms
+[GET /api/saas/accounts] Error: GHL_PRIVATE_TOKEN environment variable is not set
+    at new s (.next/server/chunks/[root-of-the-server]__c487b4ee._.js:1:1520)
+    at a (.next/server/chunks/[root-of-the-server]__c487b4ee._.js:1:4708)
+    at v (.next/server/chunks/[root-of-the-server]__b410e1ce._.js:1:5278)
+[GET /api/saas/accounts] Error: GHL_PRIVATE_TOKEN environment variable is not set
+    at new s (.next/server/chunks/[root-of-the-server]__c487b4ee._.js:1:1520)
+    at a (.next/server/chunks/[root-of-the-server]__c487b4ee._.js:1:4708)
+    at v (.next/server/chunks/[root-of-the-server]__b410e1ce._.js:1:5278)
