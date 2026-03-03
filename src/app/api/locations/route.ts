@@ -29,11 +29,19 @@ export async function GET(request: NextRequest) {
             ? allLocations.length
             : limit;
 
+        const hasMoreByTotal = totalParams > 0 && allLocations.length < totalParams;
+        // If HighLevel omits `total` (often true for unfiltered queries), we fallback to fetching more if we received a full page.
+        const hasMoreByFullPage = totalParams === 0 && allLocations.length === actualLimit;
+
         // 3. If there are more results than what we got in the first page, fetch the rest in parallel bursts
-        if (allLocations.length < totalParams && actualLimit > 0) {
-            const maxAdditionalPages = 50; // Safety cap
-            const requiredPages = Math.ceil((totalParams - allLocations.length) / actualLimit);
-            const numPagesToFetch = Math.min(requiredPages, maxAdditionalPages);
+        if ((hasMoreByTotal || hasMoreByFullPage) && actualLimit > 0) {
+            const maxAdditionalPages = 15; // Safety cap
+            let numPagesToFetch = maxAdditionalPages;
+
+            if (hasMoreByTotal) {
+                const requiredPages = Math.ceil((totalParams - allLocations.length) / actualLimit);
+                numPagesToFetch = Math.min(requiredPages, maxAdditionalPages);
+            }
 
             const promises = [];
 
