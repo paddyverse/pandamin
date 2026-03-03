@@ -22,6 +22,11 @@ export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T
         if (locId) {
             headers['x-ghl-location-id'] = locId;
         }
+
+        const authSession = sessionStorage.getItem('auth_session');
+        if (authSession) {
+            headers['x-auth-session'] = authSession;
+        }
     }
 
     const res = await fetch(url, {

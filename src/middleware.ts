@@ -65,34 +65,31 @@ export function middleware(request: NextRequest) {
     }
 
     // ─── Authentication Check ───
-    const authSession = request.cookies.get('auth_session')?.value;
+    const authSessionCookie = request.cookies.get('auth_session')?.value;
+    const authSessionHeader = request.headers.get('x-auth-session');
+    const isAuthenticated = authSessionCookie === 'authenticated' || authSessionHeader === 'authenticated';
 
-    // If accessing dashboard/API without a valid session, redirect to login
-    if (authSession !== 'authenticated') {
-        const loginUrl = request.nextUrl.clone();
-        loginUrl.pathname = '/login';
-
-        const redirectResponse = NextResponse.redirect(loginUrl);
-        redirectResponse.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') || '');
-
-        // CRITICAL: Save the location cookie on the redirect so it isn't lost
-        if (urlLocationId && cookieLocationId !== urlLocationId) {
-            redirectResponse.cookies.set('ghl_location_id', urlLocationId, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'none',
-                path: '/',
-                maxAge: 60 * 60 * 24 * 7, // 1 week
-            });
-        }
-
-        return redirectResponse;
+    // For API routes, strictly enforce authentication via 401 Unauthorized
+    if (pathname.startsWith('/api/') && !isAuthenticated) {
+        const errResponse = new NextResponse(
+            JSON.stringify({ error: 'Unauthorized access', message: 'Authentication required' }),
+            {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+        errResponse.headers.set('Content-Security-Policy', response.headers.get('Content-Security-Policy') || '');
+        return errResponse;
     }
+
+    // For UI routes, allow the request to pass through even if unauthenticated.
+    // The `<AuthGuard>` client component will handle redirecting the user to `/login`
+    // using `sessionStorage`, which works inside iframes where cookies are blocked.
 
     // ─── Proceed with Request & Apply Security Headers ───
     // (response is already defined above)
 
-    // Persist the location_id via cookie for subsequent client-side navigations
+    // Persist the location_id via cookie for subsequent client-side navigations (if cookies work)
     if (urlLocationId && cookieLocationId !== urlLocationId) {
         response.cookies.set('ghl_location_id', urlLocationId, {
             httpOnly: true,
@@ -105,6 +102,11 @@ export function middleware(request: NextRequest) {
 
     // Pass the location id as a header so Server Components/API routes can access it easily if needed
     response.headers.set('x-ghl-location-id', locationId);
+
+    // Pass the authentication state down to Server Components through a safe header
+    if (isAuthenticated) {
+        response.headers.set('x-auth-session-valid', 'true');
+    }
 
     return response;
 }

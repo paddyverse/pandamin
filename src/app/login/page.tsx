@@ -1,34 +1,47 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+'use client';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { verifyPinAction } from '@/app/login/actions';
 
-export const dynamic = 'force-dynamic';
+function LoginPageInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-async function verifyPin(formData: FormData) {
-    'use server';
-    const pin = formData.get('pin')?.toString();
-    const correctPin = process.env.DASHBOARD_PIN;
+    const handleSubmit = async (formData: FormData) => {
+        setIsLoading(true);
+        setError('');
 
-    if (!correctPin) {
-        throw new Error('DASHBOARD_PIN is not configured on the server.');
-    }
+        try {
+            const pin = formData.get('pin')?.toString() || '';
+            const isValid = await verifyPinAction(pin);
 
-    if (pin === correctPin) {
-        // Set a secure HTTP-only cookie valid for 30 days
-        const cookieStore = await cookies();
-        cookieStore.set('auth_session', 'authenticated', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none', // Needed for iframes
-            path: '/',
-            maxAge: 60 * 60 * 24 * 30, // 30 days
-        });
-        redirect('/dashboard');
-    }
-}
+            if (isValid) {
+                // Save the session securely in sessionStorage (Iframe safe)
+                sessionStorage.setItem('auth_session', 'authenticated');
 
-export default function LoginPage() {
+                // Preserve the location_id when redirecting back
+                const locId = searchParams.get('location_id') || sessionStorage.getItem('ghl_location_id');
+                if (locId) {
+                    sessionStorage.setItem('ghl_location_id', locId);
+                    router.push(`/dashboard?location_id=${locId}`);
+                } else {
+                    router.push('/dashboard');
+                }
+            } else {
+                setError('Incorrect PIN. Please try again.');
+            }
+        } catch (err) {
+            setError('An error occurred. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -47,12 +60,12 @@ export default function LoginPage() {
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-slate-200">
-                    <form action={verifyPin} className="space-y-6">
+                    <form action={handleSubmit} className="space-y-6">
                         <div>
                             <label htmlFor="pin" className="block text-sm font-medium text-slate-700">
                                 Dashboard PIN
                             </label>
-                            <div className="mt-2">
+                            <div className="mt-2 text-center">
                                 <input
                                     id="pin"
                                     name="pin"
@@ -62,17 +75,30 @@ export default function LoginPage() {
                                     className="block w-full rounded-md border-0 py-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 text-center tracking-[0.25em] font-medium"
                                     placeholder="••••"
                                 />
+                                {error && (
+                                    <p className="mt-2 text-sm text-red-600 font-medium">
+                                        {error}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
                         <div>
-                            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 h-10">
-                                Unlock Dashboard
+                            <Button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 h-10">
+                                {isLoading ? 'Verifying...' : 'Unlock Dashboard'}
                             </Button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>}>
+            <LoginPageInner />
+        </Suspense>
     );
 }

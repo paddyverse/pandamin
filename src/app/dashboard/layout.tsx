@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { useGHLContext } from '@/hooks/useGHLContext';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { type ReactNode } from 'react';
 
 const NAV_ITEMS = [
@@ -29,7 +30,7 @@ const NAV_ITEMS = [
 
 function TopNavInner({ onOpenPalette }: { onOpenPalette: () => void }) {
     const pathname = usePathname();
-    const { userFirstName } = useGHLContext();
+    const { userFirstName, locationId } = useGHLContext();
 
     return (
         <header className="shrink-0 bg-white border-b border-slate-200 shadow-sm">
@@ -78,10 +79,13 @@ function TopNavInner({ onOpenPalette }: { onOpenPalette: () => void }) {
                         href === '/dashboard'
                             ? pathname === '/dashboard'
                             : pathname.startsWith(href);
+
+                    const targetHref = locationId ? `${href}?location_id=${locationId}` : href;
+
                     return (
                         <Link
                             key={href}
-                            href={href}
+                            href={targetHref}
                             className={cn(
                                 'flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors relative whitespace-nowrap',
                                 isActive
@@ -122,22 +126,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50">
-            {/* Top Navigation */}
-            <Suspense
-                fallback={
-                    <header className="shrink-0 bg-white border-b border-slate-200 h-20" />
-                }
-            >
-                <TopNavInner onOpenPalette={openPalette} />
-            </Suspense>
+        <AuthGuard>
+            <div className="flex flex-col min-h-screen bg-slate-50">
+                {/* Top Navigation */}
+                <Suspense
+                    fallback={
+                        <header className="shrink-0 bg-white border-b border-slate-200 h-20" />
+                    }
+                >
+                    <TopNavInner onOpenPalette={openPalette} />
+                </Suspense>
 
-            {/* Page content */}
-            <main className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto px-4 py-5">{children}</div>
-            </main>
+                {/* Page content */}
+                <main className="flex-1 overflow-y-auto">
+                    <div className="max-w-7xl mx-auto px-4 py-5">{children}</div>
+                </main>
 
-            <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        </div>
+                <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+            </div>
+        </AuthGuard>
     );
 }
