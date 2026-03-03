@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, UserPlus } from 'lucide-react';
+import { CreditCard, UserPlus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlanCards } from '@/components/saas/PlanCards';
 import { PlanAssignmentTable } from '@/components/saas/PlanAssignmentTable';
 import { BulkEnableSaasDialog } from '@/components/saas/BulkEnableSaasDialog';
 import { useSaasPlans, useSaasAccounts } from '@/hooks/useSaasPlans';
+import { useDebounce } from '@/hooks/useDebounce';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +31,10 @@ function buildAccountCounts(
 
 export default function SaasPage() {
     const plansQuery = useSaasPlans();
-    const accountsQuery = useSaasAccounts();
+
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 500);
+    const accountsQuery = useSaasAccounts(debouncedSearch);
 
     const [planFilter, setPlanFilter] = useState('all');
     const [showBulkEnableDialog, setShowBulkEnableDialog] = useState(false);
@@ -37,6 +42,7 @@ export default function SaasPage() {
     const plans = plansQuery.data?.plans ?? [];
     const accounts = accountsQuery.data?.accounts ?? [];
     const metadata = accountsQuery.data?.metadata;
+    const serverTotal = accountsQuery.data?.total ?? accounts.length;
 
     const accountCounts = metadata?.planCounts ?? buildAccountCounts(accounts, plans.map((p) => p.id));
 
@@ -44,9 +50,9 @@ export default function SaasPage() {
     const inactiveAccounts = accounts.filter((a) => !a.active);
 
     const totalAssigned = metadata ? Object.values(metadata.planCounts).reduce((s, c) => s + c, 0) : 0;
-    const totalAccounts = accounts.length;
+    const totalAccounts = serverTotal;
 
-    const isLoading = plansQuery.isLoading || accountsQuery.isLoading;
+    const isLoading = plansQuery.isLoading;
 
     return (
         <div className="space-y-8">
@@ -104,16 +110,28 @@ export default function SaasPage() {
 
             {/* ── Plan Assignment Table ──────────────────────────────────────── */}
             <section>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
                         Account Assignments
                     </h2>
-                    {accountsQuery.isFetching && !isLoading && (
-                        <span className="text-xs text-slate-400">Refreshing…</span>
-                    )}
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search accounts..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9 h-9"
+                            />
+                        </div>
+                        {accountsQuery.isFetching && !accountsQuery.isLoading && (
+                            <span className="text-xs text-slate-400 shrink-0">Refreshing…</span>
+                        )}
+                    </div>
                 </div>
 
-                {isLoading ? (
+                {accountsQuery.isLoading ? (
                     <div className="space-y-2">
                         {Array.from({ length: 5 }).map((_, i) => (
                             <Skeleton key={i} className="h-11 w-full rounded-lg" />

@@ -192,9 +192,16 @@ class GHLClient {
 
     // ─── SaaS Sub-Accounts ─────────────────────────────────────────────────────
 
-    async getSaasSubAccounts(page: number = 1): Promise<{ locations: GHLSaasSubAccount[] }> {
+    async getSaasSubAccounts(
+        params: { query?: string; skip?: number; limit?: number } = {}
+    ): Promise<{ locations: GHLSaasSubAccount[] }> {
+        const searchParams = new URLSearchParams();
+        if (params.query) searchParams.set('query', params.query);
+        searchParams.set('skip', String(params.skip ?? 0));
+        searchParams.set('limit', String(params.limit ?? 20));
+
         return this.request<{ locations: GHLSaasSubAccount[] }>(
-            `/saas/saas-locations/${this.companyId}?page=${page}`
+            `/saas/saas-locations/${this.companyId}?${searchParams.toString()}`
         );
     }
 

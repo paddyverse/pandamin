@@ -2,23 +2,40 @@ import { NextResponse } from 'next/server';
 import { getGHLClient } from '@/lib/ghl-client';
 import { GHLError } from '@/lib/ghl-types';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        // Enforce location matching to prevent unauthorized access to these SaaS lists
+        const { searchParams } = new URL(request.url);
+        const urlLoc = searchParams.get('location_id');
+        const headerLoc = request.headers.get('x-ghl-location-id');
+        const cookieLoc = request.headers.get('cookie')?.match(/ghl_location_id=([^;]+)/)?.[1];
+
+        const locationId = urlLoc || headerLoc || cookieLoc;
+        const ALLOWED = process.env.ALLOWED_LOCATION_ID;
+
+        if (ALLOWED && locationId !== ALLOWED) {
+            return NextResponse.json({ error: 'Unauthorized location' }, { status: 403 });
+        }
+
         const client = getGHLClient();
 
         let allAccounts: any[] = [];
-        let page = 1;
+        const limit = 20;
+        let skip = 0;
         const maxPages = 50;
+        const querySearch = searchParams.get('query') || undefined;
 
         let activeCount = 0;
         let inactiveCount = 0;
         const planCounts: Record<string, number> = {};
 
-        // Auto-paginate safely up to 50 pages
-        while (page <= maxPages) {
-            const data = await client.getSaasSubAccounts(page);
+        // Auto-paginate safely up to 50 pages (or up to 1000 records)
+        for (let i = 0; i < maxPages; i++) {
+            // getSaasSubAccounts now takes an object { skip, limit, query }
+            const data = await client.getSaasSubAccounts({ skip, limit, query: querySearch });
             const locations = data.locations ?? [];
             if (locations.length === 0) break;
+
             allAccounts = allAccounts.concat(locations);
 
             // Compute statistics server-side to save frontend CPU
@@ -35,7 +52,7 @@ export async function GET() {
 
             // Assume if we got less than 20 results (standard GHL limit), it's the last page
             if (locations.length < 20) break;
-            page++;
+            skip += limit;
         }
 
         return NextResponse.json({

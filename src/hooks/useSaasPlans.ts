@@ -24,10 +24,14 @@ export function useSaasPlans() {
     });
 }
 
-export function useSaasAccounts() {
+export function useSaasAccounts(query?: string) {
     return useQuery<SaasAccountsResponse>({
-        queryKey: QUERY_KEYS.saasAccounts,
-        queryFn: () => fetchApi<SaasAccountsResponse>('/api/saas/accounts'),
+        queryKey: [QUERY_KEYS.saasAccounts, query],
+        queryFn: () => {
+            const url = new URL('/api/saas/accounts', window.location.origin);
+            if (query) url.searchParams.set('query', query);
+            return fetchApi<SaasAccountsResponse>(url.toString().replace(window.location.origin, ''));
+        },
         staleTime: STALE_TIMES.locations,
     });
 }
