@@ -11,25 +11,41 @@ export async function GET(request: NextRequest) {
 
         const client = getGHLClient();
 
-        let allLocations: any[] = [];
-        const limit = 20;
-        let skip = 0;
-        const maxPages = 50; // max 1000 accounts logic 
+        const limit = 100;
 
-        for (let i = 0; i < maxPages; i++) {
-            const data = await client.searchLocations({
-                skip,
-                limit,
-                query,
-            });
+        // 1. Fetch initial page 
+        const firstPage = await client.searchLocations({
+            skip: 0,
+            limit,
+            query,
+        });
 
-            const locations = data.locations ?? [];
-            if (locations.length === 0) break;
+        let allLocations: any[] = firstPage.locations ?? [];
 
-            allLocations = allLocations.concat(locations);
+        // 2. If we hit the limit, there might be more... grab the next 15 pages in parallel
+        // (15 pages * 100 limit = 1500 accounts in one ~1s burst, avoiding the 10s timeout)
+        if (allLocations.length === limit) {
+            const maxPages = 15;
+            const promises = [];
 
-            if (locations.length < 20) break;
-            skip += limit;
+            for (let i = 1; i < maxPages; i++) {
+                promises.push(
+                    client.searchLocations({ skip: i * limit, limit, query })
+                        .catch((err) => {
+                            console.error(`[GET /api/locations] Failed to fetch page ${i}:`, err);
+                            return { locations: [] };
+                        })
+                );
+            }
+
+            const results = await Promise.all(promises);
+            for (const res of results) {
+                if (res.locations && res.locations.length > 0) {
+                    allLocations = allLocations.concat(res.locations);
+                } else {
+                    break;
+                }
+            }
         }
 
         return NextResponse.json({
