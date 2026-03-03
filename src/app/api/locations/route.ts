@@ -20,36 +20,58 @@ export async function GET(request: NextRequest) {
             query,
         });
 
+        // ── DIAGNOSTIC LOGGING ──
+        const firstPageKeys = Object.keys(firstPage);
+        const firstPageCount = firstPage.locations?.length ?? 0;
+        console.log(`[DIAG] First page keys: ${JSON.stringify(firstPageKeys)}`);
+        console.log(`[DIAG] First page locations count: ${firstPageCount}`);
+        console.log(`[DIAG] First page .total: ${firstPage.total}`);
+        console.log(`[DIAG] First page .count: ${(firstPage as any).count}`);
+        console.log(`[DIAG] First page .meta: ${JSON.stringify((firstPage as any).meta)}`);
+        console.log(`[DIAG] Query param: ${query ?? '(none)'}`);
+        // ── END DIAGNOSTIC ──
+
         let allLocations: any[] = firstPage.locations ?? [];
-        const totalParams = firstPage.total ?? 0;
+        const totalFromApi = firstPage.total;
+        const countFromApi = (firstPage as any).count;
 
-        // 2. Determine actual limit applied by the API (HighLevel caps at 20 for searches, 100 for plain lists)
-        // If we got fewer results than total, we use what we actually received as the step size.
-        const actualLimit = allLocations.length > 0 && allLocations.length < limit
-            ? allLocations.length
-            : limit;
+        // Use whichever total indicator is available
+        const knownTotal = totalFromApi ?? countFromApi ?? 0;
 
-        const hasMoreByTotal = totalParams > 0 && allLocations.length < totalParams;
-        // If HighLevel omits `total` (often true for unfiltered queries), we fallback to fetching more if we received a full page.
-        const hasMoreByFullPage = totalParams === 0 && allLocations.length === actualLimit;
+        // 2. Determine actual limit applied by the API
+        const actualLimit = allLocations.length;
 
-        // 3. If there are more results than what we got in the first page, fetch the rest in parallel bursts
+        // 3. Decide if we need more pages
+        const hasMoreByTotal = knownTotal > 0 && allLocations.length < knownTotal;
+        const hasMoreByFullPage = knownTotal === 0 && actualLimit > 0 && actualLimit >= limit;
+
+        console.log(`[DIAG] knownTotal=${knownTotal}, actualLimit=${actualLimit}, hasMoreByTotal=${hasMoreByTotal}, hasMoreByFullPage=${hasMoreByFullPage}`);
+
+        // 4. Fetch remaining pages in parallel
         if ((hasMoreByTotal || hasMoreByFullPage) && actualLimit > 0) {
-            const maxAdditionalPages = 15; // Safety cap
-            let numPagesToFetch = maxAdditionalPages;
+            const maxAdditionalPages = 15;
+            let numPagesToFetch: number;
 
             if (hasMoreByTotal) {
-                const requiredPages = Math.ceil((totalParams - allLocations.length) / actualLimit);
-                numPagesToFetch = Math.min(requiredPages, maxAdditionalPages);
+                const remaining = knownTotal - allLocations.length;
+                numPagesToFetch = Math.min(Math.ceil(remaining / actualLimit), maxAdditionalPages);
+            } else {
+                numPagesToFetch = maxAdditionalPages;
             }
 
-            const promises = [];
+            console.log(`[DIAG] Fetching ${numPagesToFetch} additional pages with step=${actualLimit}`);
 
+            const promises = [];
             for (let i = 1; i <= numPagesToFetch; i++) {
+                const skipVal = i * actualLimit;
                 promises.push(
-                    client.searchLocations({ skip: i * actualLimit, limit: actualLimit, query })
+                    client.searchLocations({ skip: skipVal, limit: actualLimit, query })
+                        .then((res) => {
+                            console.log(`[DIAG] Page ${i} (skip=${skipVal}): got ${res.locations?.length ?? 0} locations`);
+                            return res;
+                        })
                         .catch((err) => {
-                            console.error(`[GET /api/locations] Failed to fetch page ${i}:`, err);
+                            console.error(`[DIAG] Page ${i} (skip=${skipVal}) FAILED:`, err.message ?? err);
                             return { locations: [] };
                         })
                 );
@@ -62,6 +84,8 @@ export async function GET(request: NextRequest) {
                 }
             }
         }
+
+        console.log(`[DIAG] FINAL total locations returned: ${allLocations.length}`);
 
         return NextResponse.json({
             locations: allLocations,
