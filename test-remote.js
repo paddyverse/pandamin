@@ -2,7 +2,7 @@ const https = require('https');
 
 async function checkRemote() {
     try {
-        const res = await fetch('https://ghl-agency-dashboard-35hho.ondigitalocean.app/api/locations');
+        const res = await fetch('https://ghl-agency-dashboard-35hho.ondigitalocean.app/api/locations?search=snapshot');
         const data = await res.json();
 
         console.log('Status:', res.status);

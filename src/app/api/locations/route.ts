@@ -21,16 +21,25 @@ export async function GET(request: NextRequest) {
         });
 
         let allLocations: any[] = firstPage.locations ?? [];
+        const totalParams = firstPage.total ?? 0;
 
-        // 2. If we hit the limit, there might be more... grab the next 15 pages in parallel
-        // (15 pages * 100 limit = 1500 accounts in one ~1s burst, avoiding the 10s timeout)
-        if (allLocations.length === limit) {
-            const maxPages = 15;
+        // 2. Determine actual limit applied by the API (HighLevel caps at 20 for searches, 100 for plain lists)
+        // If we got fewer results than total, we use what we actually received as the step size.
+        const actualLimit = allLocations.length > 0 && allLocations.length < limit
+            ? allLocations.length
+            : limit;
+
+        // 3. If there are more results than what we got in the first page, fetch the rest in parallel bursts
+        if (allLocations.length < totalParams && actualLimit > 0) {
+            const maxAdditionalPages = 50; // Safety cap
+            const requiredPages = Math.ceil((totalParams - allLocations.length) / actualLimit);
+            const numPagesToFetch = Math.min(requiredPages, maxAdditionalPages);
+
             const promises = [];
 
-            for (let i = 1; i < maxPages; i++) {
+            for (let i = 1; i <= numPagesToFetch; i++) {
                 promises.push(
-                    client.searchLocations({ skip: i * limit, limit, query })
+                    client.searchLocations({ skip: i * actualLimit, limit: actualLimit, query })
                         .catch((err) => {
                             console.error(`[GET /api/locations] Failed to fetch page ${i}:`, err);
                             return { locations: [] };
@@ -42,8 +51,6 @@ export async function GET(request: NextRequest) {
             for (const res of results) {
                 if (res.locations && res.locations.length > 0) {
                     allLocations = allLocations.concat(res.locations);
-                } else {
-                    break;
                 }
             }
         }
