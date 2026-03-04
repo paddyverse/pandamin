@@ -165,7 +165,7 @@ class GHLClient {
 
     async getPlans(): Promise<GHLPlansResponse> {
         return this.request<GHLPlansResponse>(
-            `/saas/agency-plans/${this.companyId}`
+            `/saas-api/public-api/agency-plans/${this.companyId}`
         );
     }
 
@@ -173,7 +173,7 @@ class GHLClient {
 
     async getLocationSubscription(locationId: string): Promise<GHLSubscription> {
         return this.request<GHLSubscription>(
-            `/saas/location-subscription/${locationId}`
+            `/saas-api/public-api/location-subscription/${locationId}`
         );
     }
 
@@ -182,7 +182,7 @@ class GHLClient {
         data: UpdateSubscriptionData
     ): Promise<GHLSubscription> {
         return this.request<GHLSubscription>(
-            `/saas/update-subscription/${locationId}`,
+            `/saas-api/public-api/update-saas-subscription/${locationId}`,
             {
                 method: 'PUT',
                 body: JSON.stringify({ ...data, companyId: this.companyId }),
@@ -201,7 +201,7 @@ class GHLClient {
         searchParams.set('limit', String(params.limit ?? 20));
 
         return this.request<{ locations: GHLSaasSubAccount[] }>(
-            `/saas/saas-locations/${this.companyId}?${searchParams.toString()}`
+            `/saas-api/public-api/saas-locations/${this.companyId}?${searchParams.toString()}`
         );
     }
 
@@ -211,7 +211,7 @@ class GHLClient {
         locationIds: string[],
         planId: string
     ): Promise<{ success: boolean; results: BulkOperationResult[] }> {
-        return this.request(`/saas/bulk-enable`, {
+        return this.request(`/saas-api/public-api/bulk-enable`, {
             method: 'POST',
             body: JSON.stringify({
                 locationIds,
@@ -227,9 +227,9 @@ class GHLClient {
         locationId: string,
         data: UpdateRebillingData
     ): Promise<{ success: boolean }> {
-        return this.request(`/saas/update-rebilling/${locationId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ ...data, companyId: this.companyId }),
+        return this.request(`/saas-api/public-api/update-rebilling/${this.companyId}`, {
+            method: 'POST',
+            body: JSON.stringify({ ...data, locationIds: [locationId] }),
         });
     }
 

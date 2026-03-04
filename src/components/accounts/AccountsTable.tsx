@@ -312,7 +312,8 @@ export function AccountsTable({
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        initialState: { pagination: { pageSize: 15 } },
+        autoResetPageIndex: false,
+        initialState: { pagination: { pageSize: 25 } },
     });
 
     const totalRows = accounts.length;
@@ -382,7 +383,24 @@ export function AccountsTable({
                         ? 'No accounts'
                         : `Showing ${fromRow}–${toRow} of ${totalRows} accounts`}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                    {/* Page size selector */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-slate-500">Show</span>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => table.setPageSize(Number(e.target.value))}
+                            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                        >
+                            {[15, 25, 50, 100].map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Page navigation */}
                     <Button
                         variant="outline"
                         size="sm"
