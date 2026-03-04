@@ -52,14 +52,15 @@ class GHLClient {
     private async request<T>(
         path: string,
         options: RequestInit = {},
-        retries = 3
+        retries = 3,
+        apiVersion?: string
     ): Promise<T> {
         await this.rateLimiter.waitForSlot();
 
         const url = `${GHL_BASE_URL}${path}`;
         const headers: Record<string, string> = {
             Authorization: `Bearer ${this.token}`,
-            Version: GHL_API_VERSION,
+            Version: apiVersion ?? GHL_API_VERSION,
             'Content-Type': 'application/json',
             Accept: 'application/json',
             ...(options.headers as Record<string, string>),
@@ -81,7 +82,7 @@ class GHLClient {
                 `[GHLClient] 429 rate limited on ${path}, retrying in ${backoffMs}ms (${retries} retries left)`
             );
             await new Promise((resolve) => setTimeout(resolve, backoffMs));
-            return this.request<T>(path, options, retries - 1);
+            return this.request<T>(path, options, retries - 1, apiVersion);
         }
 
         if (!response.ok) {
@@ -116,6 +117,14 @@ class GHLClient {
         }
 
         return response.json() as Promise<T>;
+    }
+
+    /**
+     * SaaS-specific request — uses the older API version required by
+     * the /saas-api/public-api/ endpoints.
+     */
+    private saasRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+        return this.request<T>(path, options, 3, '2021-04-15');
     }
 
     // ─── Locations ─────────────────────────────────────────────────────────────
@@ -164,7 +173,7 @@ class GHLClient {
     // ─── SaaS Plans ────────────────────────────────────────────────────────────
 
     async getPlans(): Promise<GHLPlansResponse> {
-        return this.request<GHLPlansResponse>(
+        return this.saasRequest<GHLPlansResponse>(
             `/saas-api/public-api/agency-plans/${this.companyId}`
         );
     }
@@ -172,7 +181,7 @@ class GHLClient {
     // ─── SaaS Subscriptions ────────────────────────────────────────────────────
 
     async getLocationSubscription(locationId: string): Promise<GHLSubscription> {
-        return this.request<GHLSubscription>(
+        return this.saasRequest<GHLSubscription>(
             `/saas-api/public-api/location-subscription/${locationId}`
         );
     }
@@ -181,7 +190,7 @@ class GHLClient {
         locationId: string,
         data: UpdateSubscriptionData
     ): Promise<GHLSubscription> {
-        return this.request<GHLSubscription>(
+        return this.saasRequest<GHLSubscription>(
             `/saas-api/public-api/update-saas-subscription/${locationId}`,
             {
                 method: 'PUT',
@@ -200,7 +209,7 @@ class GHLClient {
         searchParams.set('skip', String(params.skip ?? 0));
         searchParams.set('limit', String(params.limit ?? 20));
 
-        return this.request<{ locations: GHLSaasSubAccount[] }>(
+        return this.saasRequest<{ locations: GHLSaasSubAccount[] }>(
             `/saas-api/public-api/saas-locations/${this.companyId}?${searchParams.toString()}`
         );
     }
@@ -211,7 +220,7 @@ class GHLClient {
         locationIds: string[],
         planId: string
     ): Promise<{ success: boolean; results: BulkOperationResult[] }> {
-        return this.request(`/saas-api/public-api/bulk-enable`, {
+        return this.saasRequest(`/saas-api/public-api/bulk-enable`, {
             method: 'POST',
             body: JSON.stringify({
                 locationIds,
@@ -227,7 +236,7 @@ class GHLClient {
         locationId: string,
         data: UpdateRebillingData
     ): Promise<{ success: boolean }> {
-        return this.request(`/saas-api/public-api/update-rebilling/${this.companyId}`, {
+        return this.saasRequest(`/saas-api/public-api/update-rebilling/${this.companyId}`, {
             method: 'POST',
             body: JSON.stringify({ ...data, locationIds: [locationId] }),
         });
